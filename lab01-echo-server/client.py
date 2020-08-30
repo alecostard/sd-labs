@@ -12,6 +12,7 @@ with socket.socket() as sock:
     while True:
         msg = input()
         if msg == "[sair]":
+            sock.send(b'')
             break
         elif not msg:
             pass
