@@ -1,0 +1,1 @@
+Atividades desenvolvidas para a disciplina *Sistemas distribuídos*.
