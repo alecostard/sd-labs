@@ -42,7 +42,7 @@ def server_dispatch_loop(conn):
     """Recebe uma mensagem e atua de acordo com seu tipo."""
     while True:
         message = Message.receive(conn)
-        if message.type == "end_connection":
+        if not message:
             break
         elif message.type == "rank_words":
             message = handle_rank_words(message.contents)

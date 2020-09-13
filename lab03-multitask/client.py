@@ -19,7 +19,6 @@ def main():
             filename = input("enter file name: ")
 
             if filename == "":
-                Message("end_connection", None).send(s)
                 break
 
             Message("rank_words", filename).send(s)
