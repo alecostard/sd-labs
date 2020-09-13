@@ -1,6 +1,8 @@
 import socket
-import json
 import re
+import sys
+import select
+
 
 from Message import Message
 from wordcount import top_words
@@ -11,23 +13,29 @@ RECV_BUFFER = 1024
 
 
 def main():
-    with socket.socket() as s:
-        # opções para poder reusar uma porta logo após o encerramento do programa
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((HOST, PORT))
-        s.listen(1)     # 1 para conectar apenas com 1 cliente por vez
+    with socket.socket() as sock:
+        server_setup(sock)
         print("listening...")
-        connect_loop(s)
+        while True:
+            read_ready, _, _ = select.select([sock, sys.stdin], [], [])
+            for ready in read_ready:
+                if ready == sock:
+                    conn, addr = sock.accept()
+                    with conn:
+                        print("connected with ", addr)
+                        server_dispatch_loop(conn)
+                elif ready == sys.stdin:
+                    cmd = input()
+                    if cmd == "fim":
+                        return
 
 
-def connect_loop(socket):
-    """Coloca o servidor em um loop, sempre que uma conexão é encerrada,
-     ele espera outra."""
-    while True:
-        conn, addr = socket.accept()
-        with conn:
-            print("connected with ", addr)
-            server_dispatch_loop(conn)
+def server_setup(s):
+    """Configuração do servidor."""
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind((HOST, PORT))
+    s.listen(5)
+    s.setblocking(False)
 
 
 def server_dispatch_loop(conn):
