@@ -2,6 +2,7 @@ import socket
 import re
 import sys
 import select
+import multiprocessing
 
 
 from Message import Message
@@ -16,18 +17,39 @@ def main():
     with socket.socket() as sock:
         server_setup(sock)
         print("listening...")
-        while True:
-            read_ready, _, _ = select.select([sock, sys.stdin], [], [])
-            for ready in read_ready:
-                if ready == sock:
-                    conn, addr = sock.accept()
-                    with conn:
-                        print("connected with ", addr)
-                        server_dispatch_loop(conn)
-                elif ready == sys.stdin:
-                    cmd = input()
-                    if cmd == "fim":
-                        return
+        serve(sock)
+
+
+def serve(sock):
+
+    def spawn_task():
+        """Cria um novo processo para servir a requisição."""
+        client = multiprocessing.Process(target=server_dispatch, args=(conn,))
+        clients.append(client)
+        client.start()
+
+    def wait_clients():
+        """Bloqueia enquanto houver processos clientes executando."""
+        if clients:
+            print("waiting remaining clients...")
+        for c in clients:
+            c.join()
+
+    clients = []
+    while True:
+        read_ready, _, _ = select.select([sock, sys.stdin], [], [])
+        for ready in read_ready:
+            if ready == sock:
+                conn, addr = sock.accept()
+                print("connected with ", addr)
+                spawn_task()
+            elif ready == sys.stdin:
+                cmd = input()
+                if cmd == "fim":
+                    # desliga o socket para leitura. novas conexões serão recusadas
+                    sock.shutdown(socket.SHUT_RD)
+                    wait_clients()
+                    return
 
 
 def server_setup(s):
@@ -38,17 +60,18 @@ def server_setup(s):
     s.setblocking(False)
 
 
-def server_dispatch_loop(conn):
+def server_dispatch(conn):
     """Recebe uma mensagem e atua de acordo com seu tipo."""
-    while True:
-        message = Message.receive(conn)
-        if not message:
-            break
-        elif message.type == "rank_words":
-            message = handle_rank_words(message.contents)
-            message.send(conn)
-        else:
-            Message("error", message.type + " not supported").send(conn)
+    with conn:
+        while True:
+            message = Message.receive(conn)
+            if not message:
+                break
+            elif message.type == "rank_words":
+                message = handle_rank_words(message.contents)
+                message.send(conn)
+            else:
+                Message("error", message.type + " not supported").send(conn)
 
 
 def handle_rank_words(filename):
