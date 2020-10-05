@@ -6,6 +6,7 @@ MESSAGE_BYTE_SIZE = 4
 
 class Message:
     INTRODUCTION = "introduction"
+    FAREWELL = "farewell"
     NEW_USER = "new_user"
     LIST_USERS = "list_users"
     REQUEST_LIST = "request_list"

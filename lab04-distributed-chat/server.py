@@ -37,7 +37,8 @@ def server_loop(sock):
                     close_all_sockets(connected_users)
                     return
                 elif cmd == r"\clientes":
-                    print(connected_users)
+                    for c, name in connected_users.items():
+                        print(f'{name}: {c}')
             elif ready in connected_users:
                 handle_message(ready, connected_users)
 
@@ -72,10 +73,17 @@ def handle_message(conn, connected_users):
         username = msg.contents
         broadcast(connected_users, Message(Message.NEW_USER, username))
         connected_users[conn] = username
-        Message(Message.LIST_USERS, list(connected_users.values())).send(conn)
+        usernames = [u for u in connected_users.values() if u is not None]
+        Message(Message.LIST_USERS, usernames).send(conn)
+
+    elif msg.type == Message.FAREWELL:
+        username = connected_users[conn]
+        connected_users[conn] = None
+        broadcast(connected_users, Message(Message.USER_LEFT, username))
 
     elif msg.type == Message.REQUEST_LIST:
-        Message(Message.LIST_USERS, list(connected_users.values())).send(conn)
+        usernames = [u for u in connected_users.values() if u is not None]
+        Message(Message.LIST_USERS, usernames).send(conn)
 
     elif msg.type == Message.CHAT_MESSAGE:
         recipient = msg.contents["recipient"]
@@ -92,7 +100,7 @@ def handle_message(conn, connected_users):
 
 def broadcast(clients, message):
     """
-    Envia uma mnesagem para todos os clientes conectados.
+    Envia uma mensagem para todos os clientes conectados.
     """
     for (conn, name) in clients.items():
         if name:

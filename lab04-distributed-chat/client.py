@@ -10,12 +10,14 @@ SERVER_PORT = 21345
 
 
 def main():
-    username = input("Digite seu nome: ")
+    state = {'active': False}
+    state["username"] = input("Digite seu nome: ")
     print("Para ajuda, digite \\ajuda")
+    print("Para se conectar ao servidor, digite \\ativar")
 
     with socket.socket() as server_conn:
-        connect_with_server(server_conn, username)
-        state = {"recipient": username}
+        connect_with_server(server_conn, state["username"])
+        state["recipient"] = state["username"]
         print(f"conversando com {state['recipient']}")
         while True:
             read_ready, _, _ = select.select([sys.stdin, server_conn], [], [])
@@ -31,7 +33,6 @@ def main():
 def connect_with_server(server_conn, username):
     server_conn.connect((SERVER_HOST, SERVER_PORT))
     server_conn.setblocking(False)
-    Message(Message.INTRODUCTION, username).send(server_conn)
 
 
 def handle_message(conn):
@@ -52,6 +53,7 @@ def handle_message(conn):
         print(f"[Usuário {msg.contents} se desconectou]")
 
     elif msg.type == Message.LIST_USERS:
+        print(msg)
         print("-" * 20)
         userlist = msg.contents
         print("Usuários ativos")
@@ -82,6 +84,14 @@ def handle_commands(conn, state):
     if cmd == r"\fim":
         sys.exit()
 
+    elif cmd == r"\ativar":
+        state['active'] = True
+        Message(Message.INTRODUCTION, state["username"]).send(conn)
+
+    elif cmd == r"\inativar":
+        state['active'] = False
+        Message(Message.FAREWELL).send(conn)
+
     elif cmd.startswith(r"\para"):
         state['recipient'] = cmd.split()[1]
         print(f"conversando com {state['recipient']}")
@@ -93,8 +103,11 @@ def handle_commands(conn, state):
         print_help()
 
     else:
-        data = {"recipient": state['recipient'], "text": cmd}
-        Message(Message.CHAT_MESSAGE, data).send(conn)
+        if state["active"]:
+            data = {"recipient": state["recipient"], "text": cmd}
+            Message(Message.CHAT_MESSAGE, data).send(conn)
+        else:
+            print("Você não pode enviar mensagens enquanto estiver inativo.")
 
 
 def now():
@@ -105,10 +118,15 @@ def now():
 
 
 def print_help():
-    print("\\ajuda\t\tmostra essa mensagem de ajuda")
-    print("\\lista\t\tlista usuários ativos")
-    print("\\para x\t\tcomeça uma conversa com o usuario x")
-    print("\\fim\t\tsair da aplicação")
+    def print_cmd_description(command, description):
+        print(f'{command:<20}{description}')
+
+    print_cmd_description(r"\ativar", "tornar-se ativo")
+    print_cmd_description(r"\inativar", "tornar-se inativo")
+    print_cmd_description(r"\lista", "lista usuário ativos")
+    print_cmd_description(r"\para x", "começa uma conversa com o usuario x")
+    print_cmd_description(r"\ajuda", "exibe esta mensagem de ajuda")
+    print_cmd_description(r"\fim", "sair da aplicação")
 
 
 if __name__ == "__main__":
