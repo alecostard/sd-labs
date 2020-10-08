@@ -53,7 +53,6 @@ def handle_message(conn):
         print(f"[Usuário {msg.contents} se desconectou]")
 
     elif msg.type == Message.LIST_USERS:
-        print(msg)
         print("-" * 20)
         userlist = msg.contents
         print("Usuários ativos")
@@ -69,7 +68,7 @@ def handle_message(conn):
         print(f"Usuário {msg.contents} não está ativo.")
 
     else:
-        print(msg)
+        print("Mensagem não suportada: ", msg)
 
 
 def handle_commands(conn, state):
